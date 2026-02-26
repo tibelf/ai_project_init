@@ -1,0 +1,9 @@
+{
+  "name": "fetch",
+  "description": "URL fetching and YouTube transcript extraction",
+  "config": {
+    "command": "npx",
+    "args": ["@anthropic-ai/mcp-fetch@latest"]
+  },
+  "prompts": []
+}

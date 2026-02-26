@@ -1,0 +1,9 @@
+{
+  "name": "rube",
+  "description": "Rube automation platform for orchestrating workflows and tools",
+  "config": {
+    "command": "npx",
+    "args": ["rube-mcp", "--stdio"]
+  },
+  "prompts": []
+}

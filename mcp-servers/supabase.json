@@ -1,0 +1,9 @@
+{
+  "name": "supabase",
+  "description": "Supabase database integration via HTTP-based MCP endpoint",
+  "config": {
+    "type": "http",
+    "url": "https://mcp.supabase.com/mcp"
+  },
+  "prompts": []
+}

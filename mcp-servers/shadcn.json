@@ -1,0 +1,9 @@
+{
+  "name": "shadcn",
+  "description": "shadcn/ui component library MCP server for browsing and using UI components",
+  "config": {
+    "command": "npx",
+    "args": ["shadcn-mcp@latest"]
+  },
+  "prompts": []
+}

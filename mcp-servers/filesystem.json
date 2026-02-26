@@ -1,0 +1,16 @@
+{
+  "name": "filesystem",
+  "description": "Filesystem access MCP server for reading and writing files in specified directories",
+  "config": {
+    "command": "npx",
+    "args": ["-y", "@modelcontextprotocol/server-filesystem", "${PATHS}"]
+  },
+  "prompts": [
+    {
+      "var": "PATHS",
+      "message": "Comma-separated list of directories to allow access to",
+      "default": "~/Desktop, ~/Github, ~/Gitee, ~",
+      "sensitive": false
+    }
+  ]
+}

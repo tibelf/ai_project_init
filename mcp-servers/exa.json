@@ -1,0 +1,25 @@
+{
+  "name": "exa",
+  "description": "Exa AI-powered search including web, research papers, Twitter, and company research",
+  "config": {
+    "command": "npx",
+    "args": ["${EXA_BUILD_PATH}/build/index.js", "--tools=web_search,research_paper_search,twitter_search,company_research,crawling,competitor_finder"],
+    "env": {
+      "EXA_API_KEY": "${EXA_API_KEY}"
+    }
+  },
+  "prompts": [
+    {
+      "var": "EXA_BUILD_PATH",
+      "message": "Path to exa-mcp-server repository",
+      "default": "~/Github/exa-mcp-server",
+      "sensitive": false
+    },
+    {
+      "var": "EXA_API_KEY",
+      "message": "Exa API key for search services",
+      "default": "",
+      "sensitive": true
+    }
+  ]
+}

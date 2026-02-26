@@ -1,0 +1,9 @@
+{
+  "name": "context7",
+  "description": "Context7 documentation retrieval for up-to-date library and framework docs",
+  "config": {
+    "command": "npx",
+    "args": ["-y", "@upstash/context7-mcp@latest"]
+  },
+  "prompts": []
+}

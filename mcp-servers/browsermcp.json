@@ -1,0 +1,9 @@
+{
+  "name": "browsermcp",
+  "description": "Browser MCP server for web browser automation and interaction",
+  "config": {
+    "command": "npx",
+    "args": ["@browsermcp/mcp@latest"]
+  },
+  "prompts": []
+}

@@ -1,0 +1,42 @@
+[
+  {
+    "name": "agent-browser",
+    "description": "Browser automation CLI for AI agents",
+    "install": "claude skill add agent-browser"
+  },
+  {
+    "name": "find-skills",
+    "description": "Discover and install agent skills",
+    "install": "claude skill add find-skills"
+  },
+  {
+    "name": "kipper-frontend-design",
+    "description": "Frontend design skill for production-grade UI",
+    "install": "claude skill add kipper-frontend-design"
+  },
+  {
+    "name": "remotion-best-practices",
+    "description": "Best practices for Remotion video creation in React",
+    "install": "claude skill add remotion-best-practices"
+  },
+  {
+    "name": "seo-audit",
+    "description": "SEO audit and technical SEO diagnostics",
+    "install": "claude skill add seo-audit"
+  },
+  {
+    "name": "skill-creator",
+    "description": "Guide for creating effective skills",
+    "install": "claude skill add skill-creator"
+  },
+  {
+    "name": "composio",
+    "description": "Composio integration (Twitter API etc.)",
+    "install": "claude skill add composio"
+  },
+  {
+    "name": "firecrawl",
+    "description": "Firecrawl web scraping integration",
+    "install": "claude skill add firecrawl"
+  }
+]

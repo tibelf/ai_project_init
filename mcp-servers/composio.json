@@ -1,0 +1,19 @@
+{
+  "name": "composio",
+  "description": "Composio Twitter API integration for social media automation",
+  "config": {
+    "command": "npx",
+    "args": ["composio-mcp", "--stdio"],
+    "env": {
+      "COMPOSIO_API_KEY": "${COMPOSIO_API_KEY}"
+    }
+  },
+  "prompts": [
+    {
+      "var": "COMPOSIO_API_KEY",
+      "message": "Composio API key for Twitter integration",
+      "default": "",
+      "sensitive": true
+    }
+  ]
+}

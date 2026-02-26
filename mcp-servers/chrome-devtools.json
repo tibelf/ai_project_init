@@ -1,0 +1,9 @@
+{
+  "name": "chrome-devtools",
+  "description": "Chrome DevTools MCP server for browser automation and debugging",
+  "config": {
+    "command": "npx",
+    "args": ["@anthropic-ai/chrome-devtools-mcp@latest"]
+  },
+  "prompts": []
+}

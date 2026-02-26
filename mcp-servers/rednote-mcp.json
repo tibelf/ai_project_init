@@ -1,0 +1,9 @@
+{
+  "name": "rednote-mcp",
+  "description": "RedNote (Xiaohongshu) MCP server for searching and reading notes",
+  "config": {
+    "command": "npx",
+    "args": ["rednote-mcp", "--stdio"]
+  },
+  "prompts": []
+}
