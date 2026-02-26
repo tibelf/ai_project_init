@@ -1,38 +1,31 @@
 ---
 name: commit-with-docs
-description: 当命令完成：总结 session → 校验 staged diff → 对齐/新增 docs → git add + commit
-allowed-tools:
-  - Bash(git status:*)
-  - Bash(git diff --cached:*)
-  - Bash(cat:*)
-  - Bash(find:*)
-  - Bash(mkdir:*)
-  - Bash(touch:*)
-  - Bash(git add:*)
-  - Bash(git commit:*)
-  - Edit
+description: Summarizes code changes, validates staged diffs, updates documentation (docs/, README, CLAUDE.md, changelog), and creates git commits with aligned docs. Use when completing a feature or fix that requires documentation updates alongside code changes, writing commit messages, or updating changelogs and README files.
+allowed-tools: "git, Bash, Edit"
 ---
 
-# 全局安全约束（必须遵守）
-- 仅分析 staged（已 git add）的变更
-- 仅允许修改以下文件：
+# Global Safety Constraints (Must Follow)
+- Analyze only staged (git add) changes
+- Modify only:
   - docs/**
-  - CLAUDE.md（仅文档链接区）
+  - CLAUDE.md (documentation links section only)
   - SESSION.md
-- 严禁修改任何业务代码
-- 若 session 与 diff 不一致，必须明确指出，不得悄悄继续
+- Never modify business code
+- If session and diff conflict, explicitly flag the issue—do not proceed silently
 
-# Context（事实来源）
-- Staged status：!`git status --porcelain`
-- Staged name-status：!`git diff --cached --name-status`
-- Staged patch：!`git diff --cached`
-- SESSION.md：!`cat SESSION.md 2>/dev/null || echo "NO_SESSION_FILE"`
-- CLAUDE.md：!`cat CLAUDE.md 2>/dev/null || echo "NO_CLAUDE_FILE"`
-- docs 概览：!`find docs/ -name "*.md" 2>/dev/null || echo "No docs found"`
+# Context (Fact Sources)
+- Staged status: `git status --porcelain`
+- Staged name-status: `git diff --cached --name-status`
+- Staged patch: `git diff --cached`
+- SESSION.md: `cat SESSION.md 2>/dev/null || echo "NO_SESSION_FILE"`
+- CLAUDE.md: `cat CLAUDE.md 2>/dev/null || echo "NO_CLAUDE_FILE"`
+- docs overview: `find docs/ -name "*.md" 2>/dev/null || echo "No docs found"`
 
-# Phase 1 · Session + Diff → Plan（只分析，不改文件）
-## 如果 SESSION.md 不存在：创建模板并停止后续流程
-### SESSION.md 模板
+# Phase 1: Session + Diff → Plan (Analyze Only)
+
+## If SESSION.md Does Not Exist: Create Template and Stop
+
+### SESSION.md Template
 ```md
 # Session Intent (commit-level)
 ## Why
@@ -50,21 +43,40 @@ allowed-tools:
 ## Breaking / Migration
 *
 ```
-## Phase 1 输出
-- Session Summary（≤6 行）：Why / What / Scope / New concepts / Migration / Test status
-- Doc Change Plan（Checklist）：每项含 文档路径 + 原因（对应 SESSION）+ diff 证据（文件路径）+ 置信度
-- Conventional Commit 候选（2 条）
 
-# Phase 2 · Apply → Docs + Commit
-## 前置条件
-- SESSION.md 非空且不是纯模板
+## Phase 1 Output
+- **Session Summary** (≤6 lines): Why / What / Scope / New concepts / Migration / Test status
+- **Doc Change Plan** (Checklist): Each item includes documentation path + reason (linked to SESSION) + diff evidence (file path) + confidence level
+- **Conventional Commit Candidates** (2 options)
 
-## 判定规则（Heuristics）
-- 模块路径：src/modules/<name>/ 或 modules/<name>/ 或 packages/<name>/
-- API 触发：**/api/**, **/routes/**, **/controller/**, openapi*.{yml,yaml,json}, proto/**, sdk/**
-- 目录重构：name-status 出现 R*（rename/move）
+# Phase 2: Apply → Docs + Commit
 
-## 执行
-1) 按 Doc Plan 更新 docs（只改 docs/**、CLAUDE.md 链接区、SESSION.md）
-2) git add docs/ CLAUDE.md SESSION.md
-3) git commit -m "..."
+## Prerequisites
+- SESSION.md exists and is not purely a template
+
+## Detection Rules (Heuristics)
+- **Module paths**: `src/modules/<name>/`, `modules/<name>/`, or `packages/<name>/`
+- **API changes**: `**/api/**`, `**/routes/**`, `**/controller/**`, `openapi*.{yml,yaml,json}`, `proto/**`, `sdk/**`
+- **Directory restructuring**: name-status contains `R*` (rename/move)
+
+## Execution Steps
+1. Update docs according to Doc Plan (modify only `docs/**`, CLAUDE.md links section, SESSION.md)
+2. Run: `git add docs/ CLAUDE.md SESSION.md`
+3. Run: `git commit -m "<conventional commit message>"`
+
+## Example Workflow
+
+### Scenario: Add new API endpoint with docs
+1. Check staged changes: `git diff --cached --name-status`
+2. Read SESSION.md to understand intent
+3. Identify docs that need updates (e.g., `docs/api.md`, `docs/endpoints.md`)
+4. Update docs with new endpoint details, parameters, examples
+5. Verify no business code was modified
+6. Stage and commit: `git add docs/ && git commit -m "docs: add new endpoint documentation"`
+
+### Scenario: Refactor module with breaking changes
+1. Verify staged changes include module restructuring
+2. Check SESSION.md for migration notes
+3. Update `docs/migration.md` or `docs/changelog.md` with breaking change details
+4. Update `CLAUDE.md` links if module paths changed
+5. Commit: `git commit -m "docs: update migration guide for module refactor"`
