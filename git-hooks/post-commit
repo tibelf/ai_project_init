@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+# post-commit hook: Auto-update docs via Claude after code changes
+# Installed by ai_project_init
+
+GIT_ROOT="$(git rev-parse --show-toplevel)"
+SCRIPT="$GIT_ROOT/auto_docs_after_commit.sh"
+
+if [[ -f "$SCRIPT" ]]; then
+    "$SCRIPT"
+else
+    echo "[post-commit] auto_docs_after_commit.sh not found, skipping."
+fi

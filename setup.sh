@@ -503,43 +503,59 @@ step_claude_md() {
     header "Step 4/6 ─ CLAUDE.md & AGENTS.md"
 
     local repo_claude_md="$REPO_DIR/CLAUDE.md"
-    local user_claude_md="$HOME/.claude/CLAUDE.md"
+
+    # Determine install target
+    local target
+    if [[ "$INTERACTIVE" == true ]]; then
+        target="$(ask_target "CLAUDE.md")"
+    else
+        target="$TARGET"
+    fi
+
+    local dest_claude_md display_path
+    if [[ "$target" == "user" ]]; then
+        dest_claude_md="$HOME/.claude/CLAUDE.md"
+        display_path="~/.claude/CLAUDE.md"
+    else
+        dest_claude_md="./CLAUDE.md"
+        display_path="./CLAUDE.md"
+    fi
 
     # --- CLAUDE.md ---
     if [[ -f "$repo_claude_md" ]]; then
-        if [[ ! -f "$user_claude_md" ]] || [[ ! -s "$user_claude_md" ]]; then
+        if [[ ! -f "$dest_claude_md" ]] || [[ ! -s "$dest_claude_md" ]]; then
             # Missing or empty -> copy
             if [[ "$DRY_RUN" == true ]]; then
-                PLAN_LINES+=("add: CLAUDE.md -> $user_claude_md")
+                PLAN_LINES+=("add: CLAUDE.md -> $dest_claude_md")
                 (( COUNT_ADDED++ )) || true
             else
-                mkdir -p "$(dirname "$user_claude_md")"
-                cp "$repo_claude_md" "$user_claude_md"
-                success "+ added: ~/.claude/CLAUDE.md"
+                mkdir -p "$(dirname "$dest_claude_md")"
+                cp "$repo_claude_md" "$dest_claude_md"
+                success "+ added: $display_path"
                 (( COUNT_ADDED++ )) || true
             fi
         else
             # Has content -> ask
             if [[ "$INTERACTIVE" == true ]]; then
                 local action
-                action="$(gum choose --header "~/.claude/CLAUDE.md already exists:" \
+                action="$(gum choose --header "$display_path already exists:" \
                     "Replace (backup existing)" \
                     "Keep existing" \
                     "Skip")"
                 case "$action" in
                     Replace*)
                         if [[ "$DRY_RUN" != true ]]; then
-                            cp "$user_claude_md" "${user_claude_md}.bak.$(timestamp)"
-                            cp "$repo_claude_md" "$user_claude_md"
-                            warn "↑ replaced: ~/.claude/CLAUDE.md (backup created)"
+                            cp "$dest_claude_md" "${dest_claude_md}.bak.$(timestamp)"
+                            cp "$repo_claude_md" "$dest_claude_md"
+                            warn "↑ replaced: $display_path (backup created)"
                             (( COUNT_UPDATED++ )) || true
                         else
-                            PLAN_LINES+=("replace: CLAUDE.md -> $user_claude_md")
+                            PLAN_LINES+=("replace: CLAUDE.md -> $dest_claude_md")
                             (( COUNT_UPDATED++ )) || true
                         fi
                         ;;
                     Keep*)
-                        info "Keeping existing ~/.claude/CLAUDE.md"
+                        info "Keeping existing $display_path"
                         (( COUNT_SKIPPED++ )) || true
                         ;;
                     Skip*)
@@ -548,7 +564,7 @@ step_claude_md() {
                         ;;
                 esac
             else
-                info "~/.claude/CLAUDE.md exists; skipping in non-interactive mode."
+                info "$display_path exists; skipping in non-interactive mode."
                 (( COUNT_SKIPPED++ )) || true
             fi
         fi
@@ -557,8 +573,14 @@ step_claude_md() {
     fi
 
     # --- AGENTS.md symlink ---
+    # Only create AGENTS.md symlink when CLAUDE.md is at project root
+    if [[ "$target" != "project" ]]; then
+        info "AGENTS.md symlink skipped (CLAUDE.md installed to user level)."
+        (( COUNT_SKIPPED++ )) || true
+        return
+    fi
+
     local agents_md="./AGENTS.md"
-    local claude_md="./CLAUDE.md"
 
     if [[ -L "$agents_md" ]]; then
         info "AGENTS.md is already a symlink. Skipping."
@@ -804,9 +826,12 @@ step_git_hooks() {
     fi
 
     # Check we are in a git repo
-    if [[ ! -d ".git/hooks" ]]; then
-        warn "Not inside a git repository (no .git/hooks). Skipping git hooks."
+    if [[ ! -d ".git" ]]; then
+        warn "Not a git repository. Run 'git init' first to enable git hooks."
         return
+    fi
+    if [[ ! -d ".git/hooks" ]]; then
+        mkdir -p ".git/hooks"
     fi
 
     local -a hook_files=()
@@ -855,6 +880,17 @@ step_git_hooks() {
                         PLAN_LINES+=("hook: $name -> .git/hooks/")
                     fi
                     (( COUNT_ADDED++ )) || true
+                    # Plan companion scripts
+                    local scripts_dir="$hooks_dir/scripts"
+                    if [[ -d "$scripts_dir" && "$name" == "post-commit" ]]; then
+                        for script in "$scripts_dir"/*; do
+                            [[ -f "$script" ]] || continue
+                            local script_name
+                            script_name="$(basename "$script")"
+                            PLAN_LINES+=("script: $script_name -> ./ (companion for $name)")
+                            (( COUNT_ADDED++ )) || true
+                        done
+                    fi
                 else
                     if [[ -f "$dest" && "$(basename "$dest")" != *.sample ]]; then
                         # Existing hook (not a .sample) -- install alongside
@@ -868,6 +904,24 @@ step_git_hooks() {
                         chmod +x "$dest"
                         success "+ hook: $name"
                         (( COUNT_ADDED++ )) || true
+                    fi
+                    # Install companion scripts for this hook
+                    local scripts_dir="$hooks_dir/scripts"
+                    if [[ -d "$scripts_dir" && "$name" == "post-commit" ]]; then
+                        for script in "$scripts_dir"/*; do
+                            [[ -f "$script" ]] || continue
+                            local script_name
+                            script_name="$(basename "$script")"
+                            local script_dest="./$script_name"
+                            if [[ -f "$script_dest" ]]; then
+                                warn "↑ $script_name already exists in project root, skipping."
+                            else
+                                cp "$script" "$script_dest"
+                                chmod +x "$script_dest"
+                                success "+ script: $script_name (companion for $name hook)"
+                                (( COUNT_ADDED++ )) || true
+                            fi
+                        done
                     fi
                 fi
                 break
