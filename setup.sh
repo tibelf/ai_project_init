@@ -64,7 +64,6 @@ fi
 COUNT_ADDED=0
 COUNT_UPDATED=0
 COUNT_SKIPPED=0
-COUNT_EXTERNAL=0
 declare -a PLAN_LINES=()
 
 # ── Dependency check / auto-install ─────────────────────────────────────────
@@ -336,12 +335,10 @@ step_skills() {
     header "Step 2/6 ─ Skills"
 
     local skills_dir="$REPO_DIR/skills"
-    local external_json="$REPO_DIR/skills-external.json"
 
-    local -a skill_ids=()       # Internal identifier (dirname or external name)
+    local -a skill_ids=()       # Internal identifier (dirname)
     local -a skill_labels=()    # Display labels
-    local -a skill_types=()     # "bundled" or "external"
-    local -a skill_paths=()     # For bundled: dir path. For external: install cmd
+    local -a skill_paths=()     # Dir path
 
     # Bundled skills (directories containing SKILL.md)
     if [[ -d "$skills_dir" ]]; then
@@ -362,24 +359,7 @@ step_skills() {
                 skill_status="✓ "
             fi
             skill_labels+=("${skill_status}$name -- $desc")
-            skill_types+=("bundled")
             skill_paths+=("$dir")
-        done
-    fi
-
-    # External skills
-    if [[ -f "$external_json" ]]; then
-        local count
-        count="$(jq 'length' "$external_json")"
-        for (( i=0; i<count; i++ )); do
-            local name desc install_cmd
-            name="$(jq -r ".[$i].name" "$external_json")"
-            desc="$(jq -r ".[$i].description" "$external_json")"
-            install_cmd="$(jq -r ".[$i].install" "$external_json")"
-            skill_ids+=("$name")
-            skill_labels+=("$name -- $desc (external)")
-            skill_types+=("external")
-            skill_paths+=("$install_cmd")
         done
     fi
 
@@ -404,46 +384,16 @@ step_skills() {
         selected_labels=("${skill_labels[@]}")
     fi
 
-    # Ask target only for bundled skills
-    local has_bundled=false
-    for label in "${selected_labels[@]}"; do
-        for i in "${!skill_labels[@]}"; do
-            if [[ "${skill_labels[$i]}" == "$label" && "${skill_types[$i]}" == "bundled" ]]; then
-                has_bundled=true
-                break 2
-            fi
-        done
-    done
-
     local target=""
-    if [[ "$has_bundled" == true ]]; then
-        target="$(ask_target "skills")"
-    fi
+    target="$(ask_target "skills")"
 
     # Install selected
     for label in "${selected_labels[@]}"; do
         for i in "${!skill_labels[@]}"; do
             if [[ "${skill_labels[$i]}" == "$label" ]]; then
-                if [[ "${skill_types[$i]}" == "bundled" ]]; then
-                    local target_dir
-                    target_dir="$(resolve_target "skills" "$target")/${skill_ids[$i]}"
-                    install_dir "${skill_paths[$i]%/}" "$target_dir"
-                else
-                    # External skill
-                    local cmd="${skill_paths[$i]}"
-                    if [[ "$DRY_RUN" == true ]]; then
-                        PLAN_LINES+=("external: $cmd")
-                        (( COUNT_EXTERNAL++ )) || true
-                    else
-                        info "Installing external skill: ${skill_ids[$i]}"
-                        if eval "$cmd"; then
-                            success "+ external: ${skill_ids[$i]}"
-                        else
-                            warn "! failed: ${skill_ids[$i]} (you can install manually with: $cmd)"
-                        fi
-                        (( COUNT_EXTERNAL++ )) || true
-                    fi
-                fi
+                local target_dir
+                target_dir="$(resolve_target "skills" "$target")/${skill_ids[$i]}"
+                install_dir "${skill_paths[$i]%/}" "$target_dir"
                 break
             fi
         done
@@ -964,7 +914,7 @@ step_git_hooks() {
 
 # ── Summary & Confirmation ──────────────────────────────────────────────────
 show_summary() {
-    local total=$(( COUNT_ADDED + COUNT_UPDATED + COUNT_SKIPPED + COUNT_EXTERNAL ))
+    local total=$(( COUNT_ADDED + COUNT_UPDATED + COUNT_SKIPPED ))
 
     if [[ "$DRY_RUN" == true ]]; then
         header "Dry Run Summary"
@@ -974,7 +924,7 @@ show_summary() {
             done
         fi
         echo ""
-        info "Would add: $COUNT_ADDED | update: $COUNT_UPDATED | skip: $COUNT_SKIPPED | external: $COUNT_EXTERNAL"
+        info "Would add: $COUNT_ADDED | update: $COUNT_UPDATED | skip: $COUNT_SKIPPED"
         info "Total items: $total"
         echo ""
         info "Run without --dry-run to apply changes."
@@ -989,7 +939,6 @@ show_summary() {
             "  + Added:     $COUNT_ADDED" \
             "  ↑ Updated:   $COUNT_UPDATED" \
             "  ✓ Unchanged: $COUNT_SKIPPED" \
-            "  ⬡ External:  $COUNT_EXTERNAL" \
             "" \
             "  Total: $total"
     else
@@ -998,7 +947,6 @@ show_summary() {
         echo "  Added:     $COUNT_ADDED"
         echo "  Updated:   $COUNT_UPDATED"
         echo "  Unchanged: $COUNT_SKIPPED"
-        echo "  External:  $COUNT_EXTERNAL"
         echo "  Total:     $total"
     fi
 }

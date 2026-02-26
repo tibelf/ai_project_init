@@ -134,7 +134,7 @@ flow_add() {
   # -------------------------------------------------------------------
   # Collect items.  Each item stored as a line:
   #   STATUS|CATEGORY|NAME|SOURCE_PATH|SCOPE
-  # STATUS: new, modified, new-external
+  # STATUS: new, modified
   # SCOPE: global, project:<dir>
   # -------------------------------------------------------------------
   local items=()
@@ -172,7 +172,6 @@ flow_add() {
     done < <(find "$env_base" -name '*.md' -type f -print0 2>/dev/null)
   }
 
-  # compare_skills  ENV_BASE  REPO_SKILLS  SCOPE
   compare_skills() {
     local env_base="$1" repo_base="$2" scope="$3"
     if [[ ! -d "$env_base" ]]; then return; fi
@@ -181,35 +180,17 @@ flow_add() {
       local sname
       sname="$(basename "$entry")"
 
-      if [[ -L "$entry" ]] || [[ -L "${entry%/}" ]]; then
-        # Symlink -> external skill
-        local target
-        target="$(readlink -f "${entry%/}" 2>/dev/null || readlink "${entry%/}")"
-        # Check if already in skills-external.json
-        local ext_file="${REPO_DIR}/skills-external.json"
-        if [[ -f "$ext_file" ]]; then
-          local found
-          found=$(jq -r --arg n "$sname" '.[] | select(.name == $n) | .name' "$ext_file" 2>/dev/null || true)
-          if [[ -z "$found" ]]; then
-            items+=("new-external|Skill (external)|${sname}|${entry%/}|${scope}")
-          fi
-        else
-          items+=("new-external|Skill (external)|${sname}|${entry%/}|${scope}")
-        fi
-      else
-        # Regular directory skill
-        local key="skill:${sname}"
-        name_project_count[$key]=$(( ${name_project_count[$key]:-0} + 1 ))
+      local key="skill:${sname}"
+      name_project_count[$key]=$(( ${name_project_count[$key]:-0} + 1 ))
 
-        if [[ ! -d "${repo_base}/${sname}" ]]; then
-          items+=("new|Skill|${sname}|${entry%/}|${scope}")
-        else
-          local cs_env cs_repo
-          cs_env="$(file_checksum "$entry")"
-          cs_repo="$(file_checksum "${repo_base}/${sname}")"
-          if [[ "$cs_env" != "$cs_repo" ]]; then
-            items+=("modified|Skill|${sname}|${entry%/}|${scope}")
-          fi
+      if [[ ! -d "${repo_base}/${sname}" ]]; then
+        items+=("new|Skill|${sname}|${entry%/}|${scope}")
+      else
+        local cs_env cs_repo
+        cs_env="$(file_checksum "$entry")"
+        cs_repo="$(file_checksum "${repo_base}/${sname}")"
+        if [[ "$cs_env" != "$cs_repo" ]]; then
+          items+=("modified|Skill|${sname}|${entry%/}|${scope}")
         fi
       fi
     done
@@ -315,24 +296,22 @@ flow_add() {
   echo ""
 
   # Count by status
-  local count_new=0 count_mod=0 count_ext=0
+  local count_new=0 count_mod=0
   for item in "${items[@]}"; do
     local status="${item%%|*}"
     case "$status" in
-      new)          ((count_new++)) || true ;;
-      modified)     ((count_mod++)) || true ;;
-      new-external) ((count_ext++)) || true ;;
+      new)      ((count_new++)) || true ;;
+      modified) ((count_mod++)) || true ;;
     esac
   done
 
   printf "  %-18s %s\n" "New:" "$count_new"
   printf "  %-18s %s\n" "Modified:" "$count_mod"
-  printf "  %-18s %s\n" "New external:" "$count_ext"
   printf "  %-18s %s\n" "Total:" "${#items[@]}"
   echo ""
 
   # 5. Display items grouped by category
-  local categories=("Agent" "Skill" "Skill (external)" "Command" "MCP Server")
+  local categories=("Agent" "Skill" "Command" "MCP Server")
   for cat in "${categories[@]}"; do
     local cat_items=()
     for item in "${items[@]}"; do
@@ -355,9 +334,8 @@ flow_add() {
         fi
         local status_label
         case "$status" in
-          new)          status_label="NEW" ;;
-          modified)     status_label="MOD" ;;
-          new-external) status_label="EXT" ;;
+          new)      status_label="NEW" ;;
+          modified) status_label="MOD" ;;
         esac
         printf "    [%s] %-30s (%s)%s\n" "$status_label" "$name" "$scope" "$shared_mark"
       done
@@ -371,9 +349,8 @@ flow_add() {
     IFS='|' read -r status category name source scope <<< "$item"
     local status_label
     case "$status" in
-      new)          status_label="NEW" ;;
-      modified)     status_label="MOD" ;;
-      new-external) status_label="EXT" ;;
+      new)      status_label="NEW" ;;
+      modified) status_label="MOD" ;;
     esac
     local shared_mark=""
     local key="${category,,}:${name}"
@@ -402,9 +379,8 @@ flow_add() {
       IFS='|' read -r status category name source scope <<< "$item"
       local status_label
       case "$status" in
-        new)          status_label="NEW" ;;
-        modified)     status_label="MOD" ;;
-        new-external) status_label="EXT" ;;
+        new)      status_label="NEW" ;;
+        modified) status_label="MOD" ;;
       esac
       local shared_mark=""
       local key="${category,,}:${name}"
@@ -453,31 +429,6 @@ process_add_item() {
       mkdir -p "$dest"
       cp -Rf "$source"/* "$dest"/ 2>/dev/null || cp -Rf "$source"/. "$dest"/
       info "Copied skill: ${name}"
-      ;;
-
-    "Skill (external)")
-      # Append to skills-external.json
-      local ext_file="${REPO_DIR}/skills-external.json"
-      local target
-      target="$(readlink -f "$source" 2>/dev/null || readlink "$source")"
-      local install_cmd="claude skill add ${name}"
-
-      if [[ ! -f "$ext_file" ]]; then
-        echo "[]" > "$ext_file"
-      fi
-
-      local desc
-      desc=$(gum input --placeholder "Brief description of ${name}" \
-        --prompt "Description for ${name}: ") || true
-      [[ -z "$desc" ]] && desc="External skill: ${name}"
-
-      local new_entry
-      new_entry=$(jq -n --arg n "$name" --arg d "$desc" --arg i "$install_cmd" \
-        '{name: $n, description: $d, install: $i}')
-      local updated
-      updated=$(jq --argjson entry "$new_entry" '. += [$entry]' "$ext_file")
-      echo "$updated" | jq '.' > "$ext_file"
-      info "Added external skill to skills-external.json: ${name}"
       ;;
 
     Command)

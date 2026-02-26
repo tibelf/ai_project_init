@@ -22,10 +22,10 @@ curl -fsSL https://raw.githubusercontent.com/tibelf/ai_project_init/main/setup.s
 | Category | Count | Description |
 |----------|-------|-------------|
 | **Agents** | 13 | Specialized agents (frontend, backend, Python, TypeScript, code reviewer, etc.) |
-| **Skills** | 6 bundled + 8 external | React best practices, web design, CLAUDE.md generator, and more |
+| **Skills** | 11 | React best practices, web design, CLAUDE.md generator, browser automation, SEO audit, and more |
 | **Commands** | 5 | Refactor CLAUDE.md, worktree merge, Twitter automation |
 | **MCP Servers** | 12 | filesystem, exa, rednote, browsermcp, rube, composio, chrome-devtools, etc. |
-| **Git Hooks** | 3 | pre-commit (secrets), prepare-commit-msg (branch), post-checkout (CLAUDE.md) |
+| **Git Hooks** | 1 | post-commit (auto-update docs via Claude after code changes) |
 | **CLAUDE.md** | 1 | Universal base template for all projects |
 
 ## Interactive Setup
@@ -33,11 +33,11 @@ curl -fsSL https://raw.githubusercontent.com/tibelf/ai_project_init/main/setup.s
 `setup.sh` provides a 6-step TUI wizard (powered by [gum](https://github.com/charmbracelet/gum)):
 
 1. **Agents** — Select which agents to install
-2. **Skills** — Select bundled + external skills
+2. **Skills** — Select skills to install
 3. **Commands** — Select commands
 4. **CLAUDE.md** — Copy base CLAUDE.md + create AGENTS.md symlink
 5. **MCP Servers** — Select and configure MCP servers
-6. **Git Hooks** — Select hooks to install
+6. **Git Hooks** — Select hooks to install (offers `git init` if not a git repo)
 
 Each step lets you choose the install target:
 - **User** (`~/.claude/`) — available in all projects
@@ -65,9 +65,9 @@ Each step lets you choose the install target:
 ## CLAUDE.md Architecture
 
 ```
-~/.claude/CLAUDE.md          ← Global base (from this repo)
-./CLAUDE.md                  ← Project-specific (via generate-claude-md skill)
-./AGENTS.md → ./CLAUDE.md   ← Symlink for Cursor compatibility
+~/.claude/CLAUDE.md          ← User-level (available in all projects)
+./CLAUDE.md                  ← Project-level (setup.sh copies here when target=project)
+./AGENTS.md → ./CLAUDE.md   ← Symlink for Cursor/OpenAI Agents compatibility
 ```
 
 See [docs/CLAUDE-MD-GUIDE.md](docs/CLAUDE-MD-GUIDE.md) for writing guidelines.
