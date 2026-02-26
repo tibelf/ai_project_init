@@ -279,10 +279,14 @@ step_agents() {
         rel_path="${f#"$agents_dir"/}"
         local category
         category="$(dirname "$rel_path")"
+        local status=""
+        if [[ -f "$HOME/.claude/agents/$rel_path" || -f ".claude/agents/$rel_path" ]]; then
+            status="✓ "
+        fi
         if [[ "$category" == "." ]]; then
-            display_labels+=("$name -- $desc")
+            display_labels+=("${status}$name -- $desc")
         else
-            display_labels+=("[$category] $name -- $desc")
+            display_labels+=("${status}[$category] $name -- $desc")
         fi
     done < <(find "$agents_dir" -name '*.md' -type f -print0 | sort -z)
 
@@ -353,7 +357,11 @@ step_skills() {
                 desc="$(extract_description "$skill_md")"
             fi
             skill_ids+=("$dirname")
-            skill_labels+=("$name -- $desc")
+            local skill_status=""
+            if [[ -d "$HOME/.claude/skills/$dirname" || -d ".claude/skills/$dirname" ]]; then
+                skill_status="✓ "
+            fi
+            skill_labels+=("${skill_status}$name -- $desc")
             skill_types+=("bundled")
             skill_paths+=("$dir")
         done
@@ -460,7 +468,11 @@ step_commands() {
         name="$(basename "$f" .md)"
         desc="$(extract_description "$f")"
         cmd_files+=("$f")
-        cmd_labels+=("$name -- $desc")
+        local cmd_status=""
+        if [[ -f "$HOME/.claude/commands/$name.md" || -f ".claude/commands/$name.md" ]]; then
+            cmd_status="✓ "
+        fi
+        cmd_labels+=("${cmd_status}$name -- $desc")
     done
 
     if [[ ${#cmd_files[@]} -eq 0 ]]; then
@@ -827,8 +839,22 @@ step_git_hooks() {
 
     # Check we are in a git repo
     if [[ ! -d ".git" ]]; then
-        warn "Not a git repository. Run 'git init' first to enable git hooks."
-        return
+        if [[ "$INTERACTIVE" == true ]]; then
+            local choice
+            choice="$(gum choose --header "Not a git repository. Initialize one?" \
+                "Yes – run git init now" \
+                "No – skip git hooks")"
+            if [[ "$choice" == Yes* ]]; then
+                git init
+                success "+ git init done"
+            else
+                info "Skipped git hooks."
+                return
+            fi
+        else
+            warn "Not a git repository. Run 'git init' first to enable git hooks."
+            return
+        fi
     fi
     if [[ ! -d ".git/hooks" ]]; then
         mkdir -p ".git/hooks"
@@ -844,7 +870,11 @@ step_git_hooks() {
         [[ "$name" == .* ]] && continue
         [[ "$name" == *.sample ]] && continue
         hook_files+=("$f")
-        hook_names+=("$name")
+        local hook_status=""
+        if [[ -f ".git/hooks/$name" ]]; then
+            hook_status="✓ "
+        fi
+        hook_names+=("${hook_status}$name")
     done
 
     if [[ ${#hook_files[@]} -eq 0 ]]; then
@@ -871,43 +901,45 @@ step_git_hooks() {
         for i in "${!hook_names[@]}"; do
             if [[ "${hook_names[$i]}" == "$name" ]]; then
                 local src="${hook_files[$i]}"
-                local dest=".git/hooks/$name"
+                # Strip ✓ prefix to get the actual hook filename
+                local clean_name="${name#"✓ "}"
+                local dest=".git/hooks/$clean_name"
 
                 if [[ "$DRY_RUN" == true ]]; then
                     if [[ -f "$dest" && ! "$dest" == *.sample ]]; then
-                        PLAN_LINES+=("hook (alongside): ${name}.ai_project_init -> .git/hooks/")
+                        PLAN_LINES+=("hook (alongside): ${clean_name}.ai_project_init -> .git/hooks/")
                     else
-                        PLAN_LINES+=("hook: $name -> .git/hooks/")
+                        PLAN_LINES+=("hook: $clean_name -> .git/hooks/")
                     fi
                     (( COUNT_ADDED++ )) || true
                     # Plan companion scripts
                     local scripts_dir="$hooks_dir/scripts"
-                    if [[ -d "$scripts_dir" && "$name" == "post-commit" ]]; then
+                    if [[ -d "$scripts_dir" && "$clean_name" == "post-commit" ]]; then
                         for script in "$scripts_dir"/*; do
                             [[ -f "$script" ]] || continue
                             local script_name
                             script_name="$(basename "$script")"
-                            PLAN_LINES+=("script: $script_name -> ./ (companion for $name)")
+                            PLAN_LINES+=("script: $script_name -> ./ (companion for $clean_name)")
                             (( COUNT_ADDED++ )) || true
                         done
                     fi
                 else
                     if [[ -f "$dest" && "$(basename "$dest")" != *.sample ]]; then
                         # Existing hook (not a .sample) -- install alongside
-                        local alt_dest=".git/hooks/${name}.ai_project_init"
+                        local alt_dest=".git/hooks/${clean_name}.ai_project_init"
                         cp "$src" "$alt_dest"
                         chmod +x "$alt_dest"
-                        warn "↑ hook installed alongside existing: ${name}.ai_project_init"
+                        warn "↑ hook installed alongside existing: ${clean_name}.ai_project_init"
                         (( COUNT_ADDED++ )) || true
                     else
                         cp "$src" "$dest"
                         chmod +x "$dest"
-                        success "+ hook: $name"
+                        success "+ hook: $clean_name"
                         (( COUNT_ADDED++ )) || true
                     fi
                     # Install companion scripts for this hook
                     local scripts_dir="$hooks_dir/scripts"
-                    if [[ -d "$scripts_dir" && "$name" == "post-commit" ]]; then
+                    if [[ -d "$scripts_dir" && "$clean_name" == "post-commit" ]]; then
                         for script in "$scripts_dir"/*; do
                             [[ -f "$script" ]] || continue
                             local script_name
@@ -918,7 +950,7 @@ step_git_hooks() {
                             else
                                 cp "$script" "$script_dest"
                                 chmod +x "$script_dest"
-                                success "+ script: $script_name (companion for $name hook)"
+                                success "+ script: $script_name (companion for $clean_name hook)"
                                 (( COUNT_ADDED++ )) || true
                             fi
                         done
