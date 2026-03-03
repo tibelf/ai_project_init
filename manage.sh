@@ -140,7 +140,7 @@ flow_add() {
   local items=()
 
   # Track names seen across projects for shared detection
-  declare -A name_project_count  # name -> count of distinct projects
+  # (using eval-based indirect variables for Bash 3.2 compatibility)
 
   # ---- Helper: compare a set of env files against repo counterparts ----
 
@@ -157,7 +157,8 @@ flow_add() {
       local repo_file="${repo_base}/${rel}"
 
       local key="agent:${agent_name}"
-      name_project_count[$key]=$(( ${name_project_count[$key]:-0} + 1 ))
+      local _safe_key="_npc_${key//[^a-zA-Z0-9_]/_}"
+      eval "${_safe_key}=\$(( \${${_safe_key}:-0} + 1 ))"
 
       if [[ ! -f "$repo_file" ]]; then
         items+=("new|Agent|${rel%.md}|${env_file}|${scope}")
@@ -181,7 +182,8 @@ flow_add() {
       sname="$(basename "$entry")"
 
       local key="skill:${sname}"
-      name_project_count[$key]=$(( ${name_project_count[$key]:-0} + 1 ))
+      local _safe_key="_npc_${key//[^a-zA-Z0-9_]/_}"
+      eval "${_safe_key}=\$(( \${${_safe_key}:-0} + 1 ))"
 
       if [[ ! -d "${repo_base}/${sname}" ]]; then
         items+=("new|Skill|${sname}|${entry%/}|${scope}")
@@ -206,7 +208,8 @@ flow_add() {
       cname="$(name_of "$cmd_file")"
 
       local key="command:${cname}"
-      name_project_count[$key]=$(( ${name_project_count[$key]:-0} + 1 ))
+      local _safe_key="_npc_${key//[^a-zA-Z0-9_]/_}"
+      eval "${_safe_key}=\$(( \${${_safe_key}:-0} + 1 ))"
 
       if [[ ! -f "${repo_base}/${cname}.md" ]]; then
         items+=("new|Command|${cname}|${cmd_file}|${scope}")
@@ -326,10 +329,11 @@ flow_add() {
         IFS='|' read -r status category name source scope <<< "$item"
         local shared_mark=""
         local key
-        key="${category,,}:${name}"
+        key="$(echo "$category" | tr '[:upper:]' '[:lower:]'):${name}"
         key="${key// /-}"
+        local _safe_key="_npc_${key//[^a-zA-Z0-9_]/_}"; local _cnt; eval "_cnt=\${${_safe_key}:-0}"
         # Check shared across projects
-        if [[ ${name_project_count[$key]:-0} -ge 2 ]]; then
+        if [[ $_cnt -ge 2 ]]; then
           shared_mark=" [shared]"
         fi
         local status_label
@@ -353,9 +357,10 @@ flow_add() {
       modified) status_label="MOD" ;;
     esac
     local shared_mark=""
-    local key="${category,,}:${name}"
+    local key="$(echo "$category" | tr '[:upper:]' '[:lower:]'):${name}"
     key="${key// /-}"
-    if [[ ${name_project_count[$key]:-0} -ge 2 ]]; then
+    local _safe_key="_npc_${key//[^a-zA-Z0-9_]/_}"; local _cnt; eval "_cnt=\${${_safe_key}:-0}"
+    if [[ $_cnt -ge 2 ]]; then
       shared_mark=" *shared*"
     fi
     choice_lines+=("[${status_label}] ${category}: ${name} (${scope})${shared_mark}")
@@ -383,9 +388,10 @@ flow_add() {
         modified) status_label="MOD" ;;
       esac
       local shared_mark=""
-      local key="${category,,}:${name}"
+      local key="$(echo "$category" | tr '[:upper:]' '[:lower:]'):${name}"
       key="${key// /-}"
-      if [[ ${name_project_count[$key]:-0} -ge 2 ]]; then
+      local _safe_key="_npc_${key//[^a-zA-Z0-9_]/_}"; local _cnt; eval "_cnt=\${${_safe_key}:-0}"
+      if [[ $_cnt -ge 2 ]]; then
         shared_mark=" *shared*"
       fi
       local expected="[${status_label}] ${category}: ${name} (${scope})${shared_mark}"
@@ -487,7 +493,7 @@ process_add_item() {
       url_val=$(echo "$raw_config" | jq -r '.url // empty' 2>/dev/null || true)
       if [[ -n "$url_val" ]] && [[ "$url_val" != \$\{*\} ]]; then
         local var_name
-        var_name=$(echo "${name^^}_URL" | tr '-' '_')
+        var_name=$(echo "${name}_URL" | tr '[:lower:]' '[:upper:]' | tr '-' '_')
         config=$(echo "$config" | jq --arg v "\${${var_name}}" '.url = $v')
         local prompt_entry
         prompt_entry=$(jq -n --arg v "$var_name" --arg m "URL for ${name}" \
