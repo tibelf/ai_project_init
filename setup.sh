@@ -29,7 +29,8 @@ fi
 DRY_RUN=false
 ALL=false
 TARGET=""            # "user" or "project"; empty = ask interactively
-INTERACTIVE=true
+# Disable interactive mode when stdin is not a terminal (e.g. curl | bash)
+[[ -t 0 ]] && INTERACTIVE=true || INTERACTIVE=false
 
 # ── Parse arguments ──────────────────────────────────────────────────────────
 while [[ $# -gt 0 ]]; do
