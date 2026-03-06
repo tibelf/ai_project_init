@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# ai_project_init -- Interactive TUI installer for Claude Code agents, skills,
+# aidev-kit -- Interactive TUI installer for Claude Code agents, skills,
 # commands, MCP servers, and git hooks.
 #
 # Usage:
@@ -14,10 +14,10 @@ set -euo pipefail
 
 # ── Resolve repo directory (support curl | bash mode) ───────────────────────
 if [[ -z "${BASH_SOURCE[0]:-}" ]] || [[ "${BASH_SOURCE[0]}" == "/dev/stdin" ]] || [[ "${BASH_SOURCE[0]}" == "bash" ]]; then
-  REPO_URL="https://github.com/tibelf/ai_project_init.git"
+  REPO_URL="https://github.com/tibelf/aidev-kit.git"
   TEMP_DIR=$(mktemp -d)
   trap "rm -rf $TEMP_DIR" EXIT
-  echo "Cloning ai_project_init to temp directory..."
+  echo "Cloning aidev-kit to temp directory..."
   git clone --depth 1 "$REPO_URL" "$TEMP_DIR" 2>/dev/null
   REPO_DIR="$TEMP_DIR"
 else
@@ -960,7 +960,7 @@ show_summary() {
 main() {
     if [[ "$INTERACTIVE" == true ]]; then
         gum style --foreground 212 --bold --border double --padding "1 3" \
-            "ai_project_init" \
+            "aidev-kit" \
             "Interactive installer for Claude Code"
         echo ""
     fi
